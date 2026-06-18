@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>考研分数线查询</title>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="data.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;background:#fff;color:#222;line-height:1.6}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+.header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e0e0e0;padding:16px 24px}
+.header-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.header h1{font-size:18px;font-weight:700;white-space:nowrap;letter-spacing:1px}
+.header .src-badge{font-size:11px;color:#888;border:1px solid #ddd;border-radius:3px;padding:1px 8px;white-space:nowrap}
+.header .nav-btn{margin-left:auto;font-size:13px;color:#555;cursor:pointer;border:1px solid #ccc;border-radius:4px;padding:4px 14px;background:#fff}
+.header .nav-btn:hover{background:#f5f5f5}
+.search-row{max-width:1200px;margin:16px auto 0;padding:0 24px}
+.search-bar{display:flex;gap:8px;align-items:center;border:1px solid #ccc;border-radius:6px;padding:2px 16px;background:#fafafa}
+.search-bar:focus-within{border-color:#000;background:#fff}
+.search-bar input{flex:1;border:none;outline:none;font-size:14px;padding:10px 0;background:transparent}
+.search-bar input::placeholder{color:#aaa}
+.search-bar .icon{color:#999;font-size:16px}
+.filters{max-width:1200px;margin:12px auto 0;padding:0 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.filters select{font-size:13px;padding:6px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;color:#333;cursor:pointer;min-width:100px}
+.filters select:focus{border-color:#000;outline:none}
+.filters .stat{font-size:13px;color:#999;margin-left:auto}
+.main{max-width:1200px;margin:16px auto;padding:0 24px}
+.table-wrap{overflow-x:auto;border:1px solid #e8e8e8;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:#fafafa}
+th{padding:12px 14px;text-align:left;font-weight:600;color:#555;font-size:12px;border-bottom:2px solid #e0e0e0;white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid #f0f0f0}
+tr:hover td{background:#f8f8f8}
+.school-link{color:#000;text-decoration:none;font-weight:600;cursor:pointer}
+.school-link:hover{text-decoration:underline}
+.ext{font-size:10px;color:#888;margin-left:3px;text-decoration:none;vertical-align:super}
+.ext:hover{color:#000}
+.level-badge{display:inline-block;font-size:11px;padding:1px 8px;border-radius:3px;border:1px solid}
+.level-985{border-color:#000;color:#000}
+.level-211{border-color:#666;color:#666}
+.level-双非{border-color:#aaa;color:#888}
+.num{font-variant-numeric:tabular-nums;text-align:right;font-family:"SF Mono","Courier New",monospace}
+.num.na{color:#ccc;text-align:center}
+.no-data-row td{color:#bbb}
+.no-data-row .school-link{cursor:default;color:#bbb}
+.na-link{cursor:default!important;color:#bbb!important}
+.check-col{width:36px;text-align:center}
+.check-col input{cursor:pointer;width:15px;height:15px;accent-color:#000}
+.cat{font-size:10px;color:#777;border:1px solid #ddd;border-radius:3px;padding:0 6px;white-space:nowrap}
+.ratio-green{color:#2a7d2a;font-weight:600}
+.ratio-yellow{color:#b8860b;font-weight:600}
+.ratio-red{color:#c0392b;font-weight:600}
+.proj-badge{display:inline-block;font-size:10px;color:#888;border:1px solid #ccc;border-radius:2px;padding:0 3px;margin-left:2px;vertical-align:super;line-height:1.2}
+.detail-card{border:1px solid #e8e8e8;border-radius:6px;padding:24px}
+.detail-card h2{font-size:18px;margin-bottom:4px}
+.detail-card .subtitle{color:#888;font-size:13px;margin-bottom:16px}
+.detail-card .subjects{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.detail-card .subject-tag{font-size:12px;background:#f0f0f0;padding:4px 12px;border-radius:4px;color:#444}
+.detail-card .back-btn{font-size:13px;color:#555;cursor:pointer;border:none;background:none;padding:0;margin-bottom:16px;display:inline-block}
+.detail-card .back-btn:hover{color:#000;text-decoration:underline}
+.compare-bar{position:fixed;bottom:0;left:0;right:0;z-index:99;background:#fff;border-top:1px solid #ddd;padding:12px 24px;display:none;align-items:center;gap:12px;box-shadow:0 -2px 8px rgba(0,0,0,0.06)}
+.compare-bar.show{display:flex}
+.compare-bar .tags{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+.compare-bar .tag{font-size:12px;background:#f0f0f0;border-radius:4px;padding:4px 10px;display:flex;align-items:center;gap:6px}
+.compare-bar .tag .del{cursor:pointer;color:#999;font-size:14px;line-height:1}
+.compare-bar .tag .del:hover{color:#000}
+.compare-btn{font-size:13px;padding:6px 20px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap}
+.compare-btn:hover{background:#333}
+.compare-btn:disabled{background:#ccc;cursor:default}
+.clear-btn{font-size:12px;color:#999;cursor:pointer;border:none;background:none;border-bottom:1px solid #ddd;padding:0}
+.clear-btn:hover{color:#000}
+.chart-wrap{margin-top:24px;border:1px solid #e8e8e8;border-radius:6px;padding:20px}
+.chart-container{position:relative;height:320px}
+.compare-table td:first-child{font-weight:600;color:#555;background:#fafafa}
+.empty-state{text-align:center;padding:60px 20px;color:#999;font-size:14px}
+.empty-state .big{font-size:48px;color:#ddd;margin-bottom:12px}
+.loading{text-align:center;padding:60px;color:#999}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:200;background:#222;color:#fff;font-size:13px;padding:8px 20px;border-radius:6px;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:768px){.filters{flex-direction:column}.filters select{min-width:auto}.filters .stat{margin-left:0}th,td{padding:8px 10px;font-size:12px}}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="toast" :class="{show:toast.show}">{{ toast.msg }}</div>
+
+<header class="header">
+<div class="header-inner">
+<h1>考研分数线</h1>
+<span class="src-badge" v-if="meta">{{ meta.totalRecords||0 }} 条记录</span>
+<button class="nav-btn" v-if="view!='list'" @click="view='list'">&larr; 返回</button>
+</div>
+<div class="search-row" v-if="view==='list'">
+<div class="search-bar">
+<span class="icon">&#8993;</span>
+<input v-model="searchQuery" placeholder="搜索学校名称...">
+</div>
+</div>
+<div class="filters" v-if="view==='list'">
+<select v-model="filters.level">
+<option value="">全部层次</option>
+<option value="985">985</option><option value="211">211</option><option value="双非">双非</option>
+</select>
+<select v-model="filters.province">
+<option value="">全部省份</option>
+<option v-for="p in provinces" :key="p" :value="p">{{ p }}</option>
+</select>
+<select v-model="filters.year">
+<option v-for="y in availableYears" :key="y" :value="y">{{ y }}年</option>
+</select>
+<span class="stat">共 {{ filteredSchools.length }} 所学校</span>
+</div>
+<div class="filters" v-if="view==='school'" style="max-width:1200px;margin:8px auto 0;padding:0 24px;display:flex;gap:12px;align-items:center;">
+<select v-model="filters.year">
+<option v-for="y in availableYears" :key="y" :value="y">{{ y }}年</option>
+</select>
+<span class="stat" style="font-size:13px;color:#999;">共 {{ schoolMajors.length }} 个专业方向</span>
+</div>
+</header>
+
+<div class="main" v-if="loadError">
+<div class="empty-state"><div class="big">!</div><p>无法加载数据文件</p>
+<p style="margin-top:8px;font-size:12px;color:#bbb;">请使用 HTTP 服务器: <code>python -m http.server 8080</code></p></div>
+</div>
+
+<div class="main" v-if="loading&&!loadError"><div class="loading">加载中...</div></div>
+
+<div class="main" v-if="!loading&&view==='list'">
+<div class="table-wrap" v-if="filteredSchools.length>0">
+<table>
+<thead><tr>
+<th>学校</th><th>层次</th><th>省份</th>
+<th style="text-align:right;">专业方向数</th>
+</tr></thead>
+<tbody>
+<tr v-for="s in filteredSchools" :key="s.id" style="cursor:pointer;" @click="showSchool(s)">
+<td><span class="school-link">{{ s.name }}</span><a :href="s.admissionUrl" target="_blank" class="ext" title="招生官网" @click.stop>&#x2197;</a></td>
+<td><span class="level-badge" :class="'level-'+s.level">{{ s.level }}</span></td>
+<td>{{ s.province }}</td>
+<td class="num">{{ getSchoolMajorCount(s.id) }}</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="empty-state" v-else>
+<div class="big">&#8993;</div>
+<p>未查找到学校</p>
+<p style="margin-top:8px;font-size:12px;color:#bbb;">请尝试修改筛选条件</p>
+</div>
+</div>
+
+<div class="main" v-if="!loading&&view==='school'&&schoolViewData">
+<div class="detail-card">
+<button class="back-btn" @click="view='list'">&larr; 返回学校列表</button>
+<h2>{{ schoolViewData.name }}</h2>
+<div class="subtitle">
+<span class="level-badge" :class="'level-'+schoolViewData.level">{{ schoolViewData.level }}</span>
+&middot; {{ schoolViewData.province }}
+<a :href="schoolViewData.admissionUrl" target="_blank" style="margin-left:12px;font-size:12px;color:#555;text-decoration:underline;" v-if="schoolViewData.admissionUrl">招生官网 &#x2197;</a>
+<span style="margin-left:12px;color:#999;font-size:13px;">共 {{ schoolMajors.length }} 个专业方向</span>
+<span style="margin-left:8px;font-size:12px;color:#2a7d2a;" v-if="schoolMajors.filter(m=>m.hasData).length">有数据 {{ schoolMajors.filter(m=>m.hasData).length }} 个</span>
+
+</div>
+<div v-if="schoolMajors.length>0" class="table-wrap" style="margin-top:12px;">
+<table>
+<thead><tr>
+<th class="check-col"></th><th>招生专业名称</th><th>类别</th>
+<th style="text-align:right;">复试线</th><th style="text-align:right;">平均分</th>
+<th style="text-align:right;">最高分</th>
+<th style="text-align:right;">复试录取比例</th>
+</tr></thead>
+<tbody>
+<tr v-for="r in schoolMajors" :key="r._key" :class="{'no-data-row':!r.hasData}">
+<td class="check-col"><input type="checkbox" :checked="isInCompare(r)" @change="toggleCompare(r)" :disabled="!r.hasData"></td>
+<td><strong :class="{'school-link':r.hasData,'na-link':!r.hasData}" @click="r.hasData&&showDetail(r)">{{ r.schoolMajorName }}</strong></td>
+<td><span class="cat">{{ getCategoryName(r.categoryId) }}</span></td>
+<template v-if="r.hasData">
+<td class="num">{{ r.yr?r.yr.retestScore??'-':'找不到' }}<span v-if="r.yr&&r.yr.source==='projected'" class="proj-badge">估</span><span v-else-if="r.yr&&r.yr.source==='chsi-2025'" class="src-badge" style="font-size:10px;margin-left:2px;vertical-align:super;border-color:#4a90d9;color:#4a90d9;" title="校级复试分数线，来自研招网/学校官方">官</span></td>
+<td class="num">{{ r.yr?r.yr.avgScore??'-':'找不到' }}</td>
+<td class="num">{{ r.yr?r.yr.maxScore??'-':'找不到' }}</td>
+<td class="num" :class="nlRatioClass(r.yr)">{{ r.yr?nlRatio(r.yr):'找不到' }}</td>
+</template>
+<template v-else>
+<td class="num na" colspan="7">无法查到分数</td>
+</template>
+</tr>
+</tbody>
+</table>
+</div>
+<div v-else class="empty-state"><p>{{ schoolViewData.name }} 暂无专业数据</p></div>
+</div>
+</div>
+
+<div class="main" v-if="!loading&&view==='detail'&&detailData">
+<div class="detail-card">
+<button class="back-btn" @click="view='list'">&larr; 返回列表</button>
+<h2>{{ detailData.schoolName }} &mdash; {{ detailData.schoolMajorName }}</h2>
+<div class="subtitle">
+{{ detailData.level }} &middot; {{ detailData.province }}
+<span class="cat" style="margin-left:8px">{{ getCategoryName(detailData.categoryId) }}</span>
+<a :href="detailData.admissionUrl" target="_blank" style="margin-left:12px;font-size:12px;color:#555;text-decoration:underline;" v-if="detailData.admissionUrl">招生官网 &#x2197;</a>
+</div>
+<div class="subjects" v-if="detailData.subjects&&detailData.subjects.length">
+<span class="subject-tag" v-for="s in detailData.subjects" :key="s">{{ s }}</span>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>年份</th><th style="text-align:right;">复试线</th><th style="text-align:right;">平均分</th>
+<th style="text-align:right;">最高分</th>
+<th style="text-align:right;">复试录取比例</th>
+</tr></thead>
+<tbody>
+<tr v-for="y in sortedYears(detailData.years)" :key="y.year">
+            <td><strong>{{ y.year }}</strong></td>
+            <td class="num">{{ y.retestScore??'-' }}<span v-if="y.source==='projected'" class="proj-badge">估</span><span v-else-if="y.source==='chsi-2025'" class="src-badge" style="font-size:10px;margin-left:2px;vertical-align:super;border-color:#4a90d9;color:#4a90d9;" title="校级复试分数线，来自研招网/学校官方">官</span></td>
+            <td class="num">{{ y.avgScore??'-' }}</td>
+            <td class="num">{{ y.maxScore??'-' }}</td>
+            <td class="num" :class="nlRatioClass(y)">{{ nlRatio(y) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div v-if="currentNationalLine" style="margin-top:16px;padding:12px 16px;background:#fafafa;border-radius:6px;border:1px solid #eee;font-size:13px;">
+      <strong>工学国家线 (A类 {{ filters.year }}年):</strong>
+      <span style="margin-left:12px;">总分 <strong>{{ currentNationalLine.total }}</strong></span>
+      <span style="margin-left:12px;color:#888;">单科(=100) {{ currentNationalLine.single1 }}</span>
+      <span style="margin-left:8px;color:#888;">单科(>100) {{ currentNationalLine.single2 }}</span>
+      <span style="margin-left:12px;font-size:11px;color:#999;">数据来源: 研招网</span>
+    </div>
+  </div>
+</div>
+
+<div class="main" v-if="!loading&&view==='compare'">
+<div class="compare-table" v-if="compareData.length">
+<table>
+<thead><tr><th>指标</th><th v-for="c in compareData" :key="c.schoolId">{{ c.schoolName }}<a :href="c.admissionUrl" target="_blank" class="ext" style="margin-left:4px">&#x2197;</a></th></tr></thead>
+<tbody>
+<tr><td>复试线</td><td v-for="c in compareData" class="num">{{ c.yr?.retestScore??'找不到' }}<span v-if="c.yr?.source==='projected'" class="proj-badge">估</span><span v-else-if="c.yr?.source==='chsi-2025'" class="src-badge" style="font-size:10px;margin-left:2px;vertical-align:super;border-color:#4a90d9;color:#4a90d9;" title="校级复试分数线，来自研招网/学校官方">官</span></td></tr>
+<tr><td>平均分</td><td v-for="c in compareData" class="num">{{ c.yr?.avgScore??'找不到' }}</td></tr>
+<tr><td>最高分</td><td v-for="c in compareData" class="num">{{ c.yr?.maxScore??'找不到' }}</td></tr>
+<tr><td>复试录取比例</td><td v-for="c in compareData" class="num" :class="nlRatioClass(c.yr)">{{ c.yr?nlRatio(c.yr):'找不到' }}</td></tr>
+</tbody>
+</table>
+</div>
+<div class="chart-wrap" v-if="compareData.length">
+<div class="chart-container"><canvas ref="compareChart"></canvas></div>
+</div>
+<div class="empty-state" v-else><div class="big">&empty;</div><p>所选学校在 {{ filters.year }}年无此专业数据</p></div>
+</div>
+
+<div class="compare-bar" :class="{show:compareList.length&&view!='compare'}">
+<div class="tags">
+<span class="tag" v-for="(item,i) in compareList" :key="i">{{ item.schoolName }}-{{ item.schoolMajorName }}<span class="del" @click="removeFromCompare(i)">&times;</span></span>
+</div>
+<button class="clear-btn" @click="compareList=[]" v-if="compareList.length">清空</button>
+<button class="compare-btn" :disabled="compareList.length<2" @click="goCompare">对比({{ compareList.length }})</button>
+</div>
+</div>
+
+<script>
+
+const CATEGORIES = [{"id": "cs", "name": "计算机类", "keywords": ["计算机", "软件", "人工智能", "智能科学", "数据科学", "物联网", "网络空间安全"]}, {"id": "mechanical", "name": "机械类", "keywords": ["机械", "机器人", "车辆", "汽车", "机电", "动力工程", "力学"]}, {"id": "electronic", "name": "电子信息类", "keywords": ["电子", "通信", "信号", "微电子", "集成电路", "光电", "信息工程", "电磁场"]}, {"id": "automation", "name": "自动化类", "keywords": ["自动化", "控制", "机器人", "测控"]}, {"id": "electrical", "name": "电气类", "keywords": ["电气", "电力", "电工", "能源"]}, {"id": "civil", "name": "土木类", "keywords": ["土木", "建筑", "水利", "市政", "测绘"]}, {"id": "material", "name": "材料类", "keywords": ["材料", "冶金", "焊接"]}, {"id": "chemical", "name": "化工类", "keywords": ["化工", "化学工程", "制药", "生物工程"]}, {"id": "environment", "name": "环境类", "keywords": ["环境", "环保", "资源"]}, {"id": "other", "name": "其他工科", "keywords": ["交通运输", "船舶", "航空", "航天", "核科学", "安全科学", "食品", "纺织", "轻工"]}];
+const CATEGORY_MAP = {};
+CATEGORIES.forEach(c => { CATEGORY_MAP[c.id] = c; });
+
+function detectCategory(name) {
+  if (!name) return 'other';
+  for (const cat of CATEGORIES) {
+    for (const kw of cat.keywords) {
+      if (name.includes(kw)) return cat.id;
+    }
+  }
+  return 'other';
+}
+
+const { createApp, ref, reactive, computed, nextTick, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const view = ref('list'), loading = ref(true), loadError = ref(false);
+    const schools = ref([]), categories = ref(CATEGORIES), records = ref([]), meta = ref(null), nationalLines = ref({});
+    const searchQuery = ref(''), detailData = ref(null), schoolViewData = ref(null);
+    const filters = reactive({ level: '', province: '', year: 2025 });
+    const compareList = ref([]), compareChart = ref(null);
+    let chartInstance = null;
+    const toast = reactive({ show: false, msg: '' });
+    let tt = null;
+    const showToast = msg => { toast.msg = msg; toast.show = true; clearTimeout(tt); tt = setTimeout(() => toast.show = false, 2000); };
+
+    function applyData(j) {
+      schools.value = j.schools || [];
+      categories.value = j.categories || CATEGORIES;
+      records.value = j.records || [];
+      meta.value = j._meta || null;
+      nationalLines.value = j.nationalLines || {};
+      loading.value = false;
+    }
+
+    async function loadData() {
+      // Try multiple sources in parallel, use first valid response
+      const sources = [
+        fetch('data.json?_=' + Date.now()).then(r => r.ok ? r.json() : Promise.reject()),
+        new Promise((resolve, reject) => {
+          if (window.KAOYAN_DATA && window.KAOYAN_DATA.schools) resolve(window.KAOYAN_DATA);
+          else reject();
+        }),
+      ];
+      const result = await Promise.any(sources).catch(() => null);
+      if (result) { applyData(result); return; }
+      loadError.value = true; loading.value = false;
+    }
+
+    onMounted(() => loadData().then(() => {
+      const ys = [...new Set(records.value.flatMap(r => (r.years||[]).map(y => y.year)))].sort((a,b)=>b-a);
+      if (!ys.includes(filters.year) && ys.length) filters.year = Math.max(...ys, filters.year);
+    }));
+
+    const availableYears = computed(() => {
+      const s = new Set();
+      records.value.forEach(r => (r.years || []).forEach(y => s.add(y.year)));
+      for (let y = 2025; y <= 2035; y++) s.add(y);
+      return [...s].sort((a, b) => b - a);
+    });
+
+    const provinces = computed(() => [...new Set(schools.value.map(s => s.province).filter(Boolean))].sort());
+
+    const flatRecords = computed(() => {
+      const r = [], schoolRecords = {};
+      records.value.forEach(rec => {
+        if (!schoolRecords[rec.schoolId]) schoolRecords[rec.schoolId] = [];
+        schoolRecords[rec.schoolId].push(rec);
+      });
+      schools.value.forEach(sc => {
+        const recs = schoolRecords[sc.id] || [];
+        if (recs.length === 0) {
+          r.push({
+            _key: 'empty_' + sc.id, schoolId: sc.id, schoolName: sc.name,
+            admissionUrl: sc.admissionUrl || '', province: sc.province, level: sc.level,
+            schoolMajorName: '', categoryId: '', subjects: [], years: [], yr: null, hasData: false,
+          });
+        } else {
+          recs.forEach(rec => {
+            const catId = rec.categoryId || detectCategory(rec.schoolMajorName || rec.majorName || '');
+            const yr = rec.years ? rec.years.find(y => y.year === filters.year) : null;
+            r.push({
+              _key: sc.id + '_' + (rec.schoolMajorName || rec.majorName || ''),
+              schoolId: sc.id, schoolName: sc.name,
+              admissionUrl: sc.admissionUrl || '', province: sc.province, level: sc.level,
+              schoolMajorName: rec.schoolMajorName || rec.majorName || '',
+              categoryId: catId, subjects: rec.subjects || [], years: rec.years || [], yr: yr || null,
+              hasData: true,
+            });
+          });
+        }
+      });
+      return r;
+    });
+
+    const filteredSchools = computed(() => {
+      let list = schools.value;
+      const q = searchQuery.value.trim().toLowerCase();
+      if (q) list = list.filter(s => s.name.toLowerCase().includes(q));
+      if (filters.level) list = list.filter(s => s.level === filters.level);
+      if (filters.province) list = list.filter(s => s.province === filters.province);
+      return list.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+    });
+
+    const schoolMajors = computed(() => {
+      if (!schoolViewData.value) return [];
+      const recs = records.value.filter(r => r.schoolId === schoolViewData.value.id);
+      return recs.map(rec => {
+        const catId = rec.categoryId || detectCategory(rec.schoolMajorName || rec.majorName || '');
+        const hasAnyData = rec.years && rec.years.length > 0;
+        const yr = hasAnyData ? (rec.years.find(y => y.year === filters.year) || null) : null;
+        return {
+          _key: rec.schoolId + '_' + (rec.schoolMajorName || rec.majorName || ''),
+          schoolId: rec.schoolId, schoolName: schoolViewData.value.name,
+          admissionUrl: schoolViewData.value.admissionUrl || '',
+          schoolMajorName: rec.schoolMajorName || rec.majorName || '',
+          categoryId: catId, subjects: rec.subjects || [], years: rec.years || [], yr: yr,
+          hasData: hasAnyData,
+        };
+      }).sort((a, b) => {
+        if (a.hasData !== b.hasData) return a.hasData ? -1 : 1;
+        return a.schoolMajorName.localeCompare(b.schoolMajorName, 'zh');
+      });
+    });
+
+    function getSchoolMajorCount(schoolId) {
+      return records.value.filter(r => r.schoolId === schoolId).length;
+    }
+
+    function showSchool(s) {
+      schoolViewData.value = s;
+      view.value = 'school';
+    }
+
+    const filteredRecords = computed(() => {
+      let list = flatRecords.value;
+      const q = searchQuery.value.trim().toLowerCase();
+      if (q) list = list.filter(r => r.schoolName.toLowerCase().includes(q) || r.schoolMajorName.toLowerCase().includes(q));
+      if (filters.level) list = list.filter(r => r.level === filters.level);
+      if (filters.province) list = list.filter(r => r.province === filters.province);
+      list.sort((a, b) => {
+        if (a.hasData !== b.hasData) return a.hasData ? -1 : 1;
+        return a.schoolName.localeCompare(b.schoolName, 'zh');
+      });
+      return list;
+    });
+
+    function getCategoryName(id) { return CATEGORY_MAP[id] ? CATEGORY_MAP[id].name : '未分类'; }
+
+    const currentNationalLine = computed(() => {
+      const lines = nationalLines.value['工学'];
+      if (!lines) return null;
+      const yearData = lines['A类']?.find(y => y.year === filters.year);
+      return yearData || null;
+    });
+
+    function isInCompare(r) { return compareList.value.some(c => c.schoolId === r.schoolId && c.schoolMajorName === r.schoolMajorName); }
+
+    function toggleCompare(r) {
+      const i = compareList.value.findIndex(c => c.schoolId === r.schoolId && c.schoolMajorName === r.schoolMajorName);
+      if (i >= 0) compareList.value.splice(i, 1);
+      else if (compareList.value.length >= 8) showToast('最多对比 8 所学校');
+      else compareList.value.push({ schoolId: r.schoolId, schoolName: r.schoolName, admissionUrl: r.admissionUrl, schoolMajorName: r.schoolMajorName, years: r.years });
+    }
+
+    function removeFromCompare(i) { compareList.value.splice(i, 1); }
+
+    function showDetail(r) { detailData.value = r; view.value = 'detail'; }
+
+    function sortedYears(ys) { return [...(ys || [])].sort((a, b) => b.year - a.year); }
+
+    function nlRatio(yr) {
+      if (!yr || !yr.retestScore || !currentNationalLine.value || !currentNationalLine.value.total) return '-';
+      return (yr.retestScore / currentNationalLine.value.total).toFixed(2);
+    }
+    function nlRatioClass(yr) {
+      const r = nlRatio(yr); if (r === '-') return '';
+      const n = parseFloat(r);
+      if (n <= 1.2) return 'ratio-green';
+      if (n <= 1.5) return 'ratio-yellow';
+      return 'ratio-red';
+    }
+
+    const compareData = computed(() => {
+      const y = filters.year;
+      return compareList.value.map(c => { const yr = (c.years || []).find(cy => cy.year === y) || null; return { ...c, yr }; });
+    });
+
+    function goCompare() {
+      if (compareList.value.length < 2) return;
+      const a = [...new Set(compareList.value.map(c => c.schoolMajorName))];
+      if (a.length > 1) { showToast('对比的学校需选择同一专业'); return; }
+      view.value = 'compare'; nextTick(() => renderChart());
+    }
+
+    function renderChart() {
+      const cv = compareChart.value; if (!cv) return;
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+      const d = compareData.value;
+      const labels = d.map(d => d.schoolName);
+      const rs = d.map(d => d.yr?.retestScore ?? null), av = d.map(d => d.yr?.avgScore ?? null), mx = d.map(d => d.yr?.maxScore ?? null);
+      const ds = [];
+      if (rs.some(v => v !== null)) ds.push({ label: '复试线', data: rs, backgroundColor: 'rgba(0,0,0,0.8)', borderRadius: 3 });
+      if (av.some(v => v !== null)) ds.push({ label: '平均分', data: av, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 3 });
+      if (mx.some(v => v !== null)) ds.push({ label: '最高分', data: mx, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 3 });
+      // Add national line as a horizontal reference
+      let nl = currentNationalLine.value;
+      if (nl && nl.total && rs.some(v => v !== null)) {
+        ds.push({
+          label: `工学国家线(${nl.total})`, type: 'line', data: Array(labels.length).fill(nl.total),
+          borderColor: '#e74c3c', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3],
+          pointRadius: 0, fill: false, tension: 0,
+        });
+      }
+      if (!ds.length) return;
+      chartInstance = new Chart(cv, {
+        type: 'bar', data: { labels, datasets: ds },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16, font: { size: 12 } } } },
+          scales: { y: { beginAtZero: false, grid: { color: '#eee' }, ticks: { font: { size: 11 } } }, x: { grid: { display: false }, ticks: { font: { size: 11 } } } },
+        },
+      });
+    }
+
+    return {
+      view, loading, loadError, schools, categories, records, meta,
+      searchQuery, filters, availableYears, provinces,
+      filteredSchools, schoolMajors, getSchoolMajorCount, showSchool,
+      schoolViewData,
+      flatRecords, filteredRecords, getCategoryName,
+      compareList, isInCompare, toggleCompare, removeFromCompare,
+      detailData, showDetail, sortedYears,
+      nlRatio, nlRatioClass, compareData, goCompare, compareChart, toast,
+      currentNationalLine, nationalLines,
+    };
+  },
+}).mount('#app');
+</script>
+</body>
+</html>
